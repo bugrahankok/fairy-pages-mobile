@@ -1,10 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Switch, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback, useRef } from 'react';
+import {
+    View,
+    Text,
+    ScrollView,
+    TouchableOpacity,
+    Image,
+    Switch,
+    Alert,
+    ActivityIndicator,
+    StyleSheet
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
-import { userApi, bookApi, API_BASE_URL } from '../../services/api';
+import { bookApi, API_BASE_URL } from '../../services/api';
+import { bookCache } from '../../services/bookCache';
 import { useAuth } from '../../context/AuthContext';
 
 interface Book {
@@ -19,12 +30,19 @@ export default function ProfileScreen() {
     const [books, setBooks] = useState<Book[]>([]);
     const [loading, setLoading] = useState(true);
     const [notifications, setNotifications] = useState(true);
+    const hasLoadedOnce = useRef(false);
 
     useFocusEffect(
         useCallback(() => {
             if (isAuthenticated) {
-                refreshUser();
-                loadBooks();
+                // Don't call refreshUser on every focus - it causes 401 errors
+                // Only load books from cache if not loaded before
+                if (!hasLoadedOnce.current) {
+                    loadBooks();
+                    hasLoadedOnce.current = true;
+                } else {
+                    setLoading(false);
+                }
             } else {
                 setLoading(false);
             }
@@ -33,10 +51,27 @@ export default function ProfileScreen() {
 
     const loadBooks = async () => {
         try {
+            // Try to load from cache first
+            const cachedBooks = await bookCache.getLibraryBooks();
+            if (cachedBooks && cachedBooks.length > 0) {
+                console.log('📦 Using cached books for profile');
+                setBooks(cachedBooks.slice(0, 5));
+                setLoading(false);
+                return;
+            }
+
+            console.log('📚 Fetching profile books from API...');
             const response = await bookApi.history();
-            setBooks((response.data || []).slice(0, 5));
-        } catch (error) {
-            console.error('Failed to load books:', error);
+            const fetchedBooks = response.data || [];
+            console.log(`✅ Loaded ${fetchedBooks.length} books for profile`);
+            setBooks(fetchedBooks.slice(0, 5));
+
+            // Also cache them for library screen
+            if (fetchedBooks.length > 0) {
+                await bookCache.saveLibraryBooks(fetchedBooks);
+            }
+        } catch (error: any) {
+            console.error('❌ Failed to load profile books:', error.message);
         } finally {
             setLoading(false);
         }
@@ -53,26 +88,26 @@ export default function ProfileScreen() {
         if (book.coverImagePath) {
             return `${API_BASE_URL}/api/book/${book.bookId}/cover`;
         }
-        return 'https://loremflickr.com/400/600/storybook';
+        return 'https://picsum.photos/400/600';
     };
 
     if (!isAuthenticated) {
         return (
-            <SafeAreaView className="flex-1 bg-white items-center justify-center px-8">
+            <SafeAreaView style={styles.centeredContainer}>
                 <Ionicons name="person-circle-outline" size={80} color="#d1d5db" />
-                <Text className="text-xl font-bold text-gray-900 mt-4 text-center">Welcome to Fairy Pages</Text>
-                <Text className="text-gray-400 text-center mt-2">Login to access your profile and stories</Text>
+                <Text style={styles.welcomeTitle}>Welcome to Fairy Pages</Text>
+                <Text style={styles.welcomeText}>Login to access your profile</Text>
                 <TouchableOpacity
                     onPress={() => router.push('/(auth)/login')}
-                    className="bg-purple-500 px-8 py-3 rounded-xl mt-6"
+                    style={styles.loginButton}
                 >
-                    <Text className="text-white font-bold">Login</Text>
+                    <Text style={styles.loginButtonText}>Login</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     onPress={() => router.push('/(auth)/register')}
-                    className="mt-4"
+                    style={styles.registerButton}
                 >
-                    <Text className="text-purple-500 font-medium">Create Account</Text>
+                    <Text style={styles.registerButtonText}>Create Account</Text>
                 </TouchableOpacity>
             </SafeAreaView>
         );
@@ -80,7 +115,7 @@ export default function ProfileScreen() {
 
     if (loading) {
         return (
-            <SafeAreaView className="flex-1 bg-white items-center justify-center">
+            <SafeAreaView style={styles.centeredContainer}>
                 <ActivityIndicator size="large" color="#a855f7" />
             </SafeAreaView>
         );
@@ -89,86 +124,84 @@ export default function ProfileScreen() {
     const avatarInitial = user?.name?.charAt(0).toUpperCase() || 'U';
 
     return (
-        <SafeAreaView className="flex-1 bg-gray-50">
-            <ScrollView className="flex-1">
+        <SafeAreaView style={styles.container}>
+            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
-                <View className="flex-row items-center justify-between px-5 py-4">
+                <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()}>
                         <Ionicons name="chevron-back" size={24} color="#333" />
                     </TouchableOpacity>
-                    <Text className="text-lg font-bold text-gray-900">My Profile</Text>
+                    <Text style={styles.headerTitle}>My Profile</Text>
                     <TouchableOpacity>
-                        <Text className="text-purple-500 font-medium">Edit</Text>
+                        <Text style={styles.editText}>Edit</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* Avatar Section */}
-                <View className="items-center py-6">
-                    <View className="relative">
-                        <View className="w-24 h-24 rounded-full bg-purple-100 items-center justify-center">
-                            <Text className="text-3xl font-bold text-purple-600">{avatarInitial}</Text>
+                <View style={styles.avatarSection}>
+                    <View style={styles.avatarContainer}>
+                        <View style={styles.avatar}>
+                            <Text style={styles.avatarText}>{avatarInitial}</Text>
                         </View>
-                        <TouchableOpacity className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-purple-500 items-center justify-center border-2 border-white">
+                        <TouchableOpacity style={styles.editAvatarButton}>
                             <Ionicons name="pencil" size={14} color="#fff" />
                         </TouchableOpacity>
                     </View>
-                    <Text className="text-xl font-bold text-gray-900 mt-3">{user?.name}</Text>
-                    <Text className="text-gray-400">Storyteller</Text>
+                    <Text style={styles.userName}>{user?.name}</Text>
+                    <Text style={styles.userRole}>Storyteller</Text>
                     {user?.isPremium && (
-                        <View className="flex-row items-center mt-2 bg-yellow-100 px-3 py-1 rounded-full">
+                        <View style={styles.premiumBadge}>
                             <Ionicons name="star" size={14} color="#f59e0b" />
-                            <Text className="text-yellow-700 font-bold text-xs ml-1">Premium Member</Text>
+                            <Text style={styles.premiumText}>Premium Member</Text>
                         </View>
                     )}
                 </View>
 
                 {/* Stats */}
-                <View className="flex-row justify-around px-5 mb-6">
-                    <View className="items-center bg-white rounded-xl px-6 py-3 shadow-sm">
-                        <Text className="text-2xl font-bold text-gray-900">{books.length}</Text>
-                        <Text className="text-gray-400 text-xs uppercase">Books</Text>
+                <View style={styles.statsRow}>
+                    <View style={styles.statCard}>
+                        <Text style={styles.statNumber}>{books.length}</Text>
+                        <Text style={styles.statLabel}>BOOKS</Text>
                     </View>
-                    <View className="items-center bg-white rounded-xl px-6 py-3 shadow-sm">
-                        <View className="flex-row items-center">
-                            <Text className="text-2xl font-bold text-purple-500">5</Text>
-                            <Ionicons name="sparkles" size={16} color="#a855f7" className="ml-1" />
+                    <View style={styles.statCard}>
+                        <View style={styles.creditRow}>
+                            <Text style={[styles.statNumber, { color: '#a855f7' }]}>5</Text>
+                            <Ionicons name="sparkles" size={14} color="#a855f7" />
                         </View>
-                        <Text className="text-gray-400 text-xs uppercase">Credits</Text>
+                        <Text style={styles.statLabel}>CREDITS</Text>
                     </View>
-                    <View className="items-center bg-white rounded-xl px-6 py-3 shadow-sm">
-                        <Text className="text-2xl font-bold text-gray-900">48</Text>
-                        <Text className="text-gray-400 text-xs uppercase">Likes</Text>
+                    <View style={styles.statCard}>
+                        <Text style={styles.statNumber}>48</Text>
+                        <Text style={styles.statLabel}>LIKES</Text>
                     </View>
                 </View>
 
                 {/* Created Stories */}
                 {books.length > 0 && (
-                    <View className="mb-6">
-                        <View className="flex-row justify-between items-center px-5 mb-3">
-                            <Text className="text-base font-bold text-gray-900">Created Stories</Text>
+                    <View style={styles.storiesSection}>
+                        <View style={styles.sectionHeader}>
+                            <Text style={styles.sectionTitle}>Created Stories</Text>
                             <TouchableOpacity onPress={() => router.push('/(tabs)/library')}>
-                                <Text className="text-purple-500 font-medium">See All</Text>
+                                <Text style={styles.seeAllText}>See All</Text>
                             </TouchableOpacity>
                         </View>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="pl-5">
-                            {/* Create New */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                             <TouchableOpacity
                                 onPress={() => router.push('/(tabs)/create')}
-                                className="w-24 h-32 bg-pink-50 rounded-xl items-center justify-center mr-3 border-2 border-dashed border-pink-200"
+                                style={styles.newStoryCard}
                             >
                                 <Ionicons name="add-circle" size={32} color="#a855f7" />
-                                <Text className="text-purple-600 text-xs mt-1">New Story</Text>
+                                <Text style={styles.newStoryText}>New Story</Text>
                             </TouchableOpacity>
-
                             {books.map((book) => (
                                 <TouchableOpacity
                                     key={book.bookId}
                                     onPress={() => router.push(`/book/${book.bookId}`)}
-                                    className="mr-3"
+                                    style={styles.storyCard}
                                 >
                                     <Image
                                         source={{ uri: getCoverUrl(book) }}
-                                        className="w-24 h-32 rounded-xl"
+                                        style={styles.storyImage}
                                         resizeMode="cover"
                                     />
                                 </TouchableOpacity>
@@ -178,64 +211,335 @@ export default function ProfileScreen() {
                 )}
 
                 {/* Settings */}
-                <View className="bg-white mx-5 rounded-xl overflow-hidden mb-6">
-                    <TouchableOpacity className="flex-row items-center justify-between px-4 py-4 border-b border-gray-100">
-                        <View className="flex-row items-center">
+                <View style={styles.settingsCard}>
+                    <TouchableOpacity style={styles.settingItem}>
+                        <View style={styles.settingLeft}>
                             <Ionicons name="person-outline" size={20} color="#666" />
-                            <Text className="ml-3 text-gray-900">Account Details</Text>
+                            <Text style={styles.settingText}>Account Details</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#999" />
                     </TouchableOpacity>
 
+                    <View style={styles.settingDivider} />
+
                     <TouchableOpacity
+                        style={styles.settingItem}
                         onPress={() => router.push('/paywall')}
-                        className="flex-row items-center justify-between px-4 py-4 border-b border-gray-100"
                     >
-                        <View className="flex-row items-center">
+                        <View style={styles.settingLeft}>
                             <Ionicons name="card-outline" size={20} color="#666" />
-                            <Text className="ml-3 text-gray-900">Subscription</Text>
+                            <Text style={styles.settingText}>Subscription</Text>
                         </View>
-                        <Text className="text-purple-500 font-medium">{user?.isPremium ? 'Premium' : 'Free'}</Text>
+                        <Text style={styles.subscriptionStatus}>
+                            {user?.isPremium ? 'Premium' : 'Free'}
+                        </Text>
                     </TouchableOpacity>
 
-                    <View className="flex-row items-center justify-between px-4 py-4 border-b border-gray-100">
-                        <View className="flex-row items-center">
+                    <View style={styles.settingDivider} />
+
+                    <View style={styles.settingItem}>
+                        <View style={styles.settingLeft}>
                             <Ionicons name="notifications-outline" size={20} color="#666" />
-                            <Text className="ml-3 text-gray-900">Notifications</Text>
+                            <Text style={styles.settingText}>Notifications</Text>
                         </View>
                         <Switch
                             value={notifications}
                             onValueChange={setNotifications}
-                            trackColor={{ true: '#a855f7' }}
+                            trackColor={{ true: '#a855f7', false: '#e5e7eb' }}
+                            thumbColor="#fff"
                         />
                     </View>
 
-                    <TouchableOpacity className="flex-row items-center justify-between px-4 py-4 border-b border-gray-100">
-                        <View className="flex-row items-center">
+                    <View style={styles.settingDivider} />
+
+                    <TouchableOpacity style={styles.settingItem}>
+                        <View style={styles.settingLeft}>
                             <Ionicons name="globe-outline" size={20} color="#666" />
-                            <Text className="ml-3 text-gray-900">App Language</Text>
+                            <Text style={styles.settingText}>App Language</Text>
                         </View>
-                        <Text className="text-gray-400">English</Text>
+                        <Text style={styles.languageText}>English</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity className="flex-row items-center justify-between px-4 py-4">
-                        <View className="flex-row items-center">
+                    <View style={styles.settingDivider} />
+
+                    <TouchableOpacity style={styles.settingItem}>
+                        <View style={styles.settingLeft}>
                             <Ionicons name="help-circle-outline" size={20} color="#666" />
-                            <Text className="ml-3 text-gray-900">Help & Support</Text>
+                            <Text style={styles.settingText}>Help & Support</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color="#999" />
                     </TouchableOpacity>
                 </View>
 
                 {/* Logout */}
-                <TouchableOpacity
-                    onPress={handleLogout}
-                    className="flex-row items-center justify-center mx-5 mb-8 py-4 bg-white rounded-xl"
-                >
+                <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
                     <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-                    <Text className="ml-2 text-red-500 font-medium">Logout</Text>
+                    <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
+
+                <View style={{ height: 100 }} />
             </ScrollView>
         </SafeAreaView>
     );
 }
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#0f0a1a',
+    },
+    scrollView: {
+        flex: 1,
+    },
+    centeredContainer: {
+        flex: 1,
+        backgroundColor: '#0f0a1a',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 40,
+    },
+    welcomeTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#f9fafb',
+        marginTop: 16,
+        textAlign: 'center',
+    },
+    welcomeText: {
+        fontSize: 15,
+        color: '#9ca3af',
+        marginTop: 8,
+        textAlign: 'center',
+    },
+    loginButton: {
+        backgroundColor: '#a855f7',
+        paddingHorizontal: 48,
+        paddingVertical: 14,
+        borderRadius: 14,
+        marginTop: 24,
+    },
+    loginButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+    },
+    registerButton: {
+        marginTop: 16,
+    },
+    registerButtonText: {
+        color: '#a855f7',
+        fontWeight: '600',
+        fontSize: 16,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+    },
+    headerTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#f9fafb',
+    },
+    editText: {
+        color: '#a855f7',
+        fontWeight: '600',
+        fontSize: 16,
+    },
+    avatarSection: {
+        alignItems: 'center',
+        paddingVertical: 20,
+    },
+    avatarContainer: {
+        position: 'relative',
+    },
+    avatar: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: '#241a35',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarText: {
+        fontSize: 36,
+        fontWeight: 'bold',
+        color: '#a855f7',
+    },
+    editAvatarButton: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: '#a855f7',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 3,
+        borderColor: '#fff',
+    },
+    userName: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#f9fafb',
+        marginTop: 12,
+    },
+    userRole: {
+        fontSize: 15,
+        color: '#9ca3af',
+        marginTop: 2,
+    },
+    premiumBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#fef3c7',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        marginTop: 12,
+    },
+    premiumText: {
+        color: '#b45309',
+        fontWeight: 'bold',
+        fontSize: 12,
+        marginLeft: 6,
+    },
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        paddingHorizontal: 20,
+        gap: 12,
+        marginBottom: 24,
+    },
+    statCard: {
+        backgroundColor: '#1a1025',
+        borderRadius: 16,
+        paddingHorizontal: 24,
+        paddingVertical: 16,
+        alignItems: 'center',
+        shadowColor: '#a855f7',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.15,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    statNumber: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#f9fafb',
+    },
+    creditRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    statLabel: {
+        fontSize: 11,
+        color: '#9ca3af',
+        marginTop: 4,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+    },
+    storiesSection: {
+        marginBottom: 24,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        marginBottom: 12,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#f9fafb',
+    },
+    seeAllText: {
+        color: '#a855f7',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    newStoryCard: {
+        width: 100,
+        height: 130,
+        backgroundColor: '#241a35',
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 20,
+        marginRight: 12,
+        borderWidth: 2,
+        borderStyle: 'dashed',
+        borderColor: '#a855f7',
+    },
+    newStoryText: {
+        color: '#a855f7',
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: 8,
+    },
+    storyCard: {
+        marginRight: 12,
+    },
+    storyImage: {
+        width: 100,
+        height: 130,
+        borderRadius: 16,
+    },
+    settingsCard: {
+        backgroundColor: '#1a1025',
+        marginHorizontal: 20,
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
+    settingItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+    },
+    settingLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    settingText: {
+        fontSize: 16,
+        color: '#f9fafb',
+        marginLeft: 12,
+    },
+    settingDivider: {
+        height: 1,
+        backgroundColor: '#241a35',
+        marginLeft: 48,
+    },
+    subscriptionStatus: {
+        color: '#a855f7',
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    languageText: {
+        color: '#9ca3af',
+        fontSize: 14,
+    },
+    logoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#1a1025',
+        marginHorizontal: 20,
+        marginTop: 16,
+        paddingVertical: 16,
+        borderRadius: 16,
+    },
+    logoutText: {
+        color: '#ef4444',
+        fontWeight: '600',
+        fontSize: 16,
+        marginLeft: 8,
+    },
+});

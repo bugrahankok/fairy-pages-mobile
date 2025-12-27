@@ -117,7 +117,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const refreshUser = async () => {
+        // Only refresh if we have a token
+        if (!token) return;
+
         try {
+            console.log('🔄 Refreshing user data...');
             const response = await authApi.getMe();
             const data = response.data;
 
@@ -132,8 +136,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
             setUser(updatedUser);
-        } catch (error) {
-            console.error('Failed to refresh user:', error);
+            console.log('✅ User data refreshed successfully');
+        } catch (error: any) {
+            // DON'T logout on any error - keep user logged in until they manually logout
+            // The token might still be valid for other endpoints
+            console.warn('⚠️ Could not refresh user data, continuing with cached data');
         }
     };
 
