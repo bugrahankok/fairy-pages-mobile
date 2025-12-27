@@ -187,6 +187,7 @@ export const authApi = {
     register: (name: string, email: string, password: string) =>
         api.post('/api/auth/register', { name, email, password }),
     getMe: () => api.get('/api/auth/me'),
+    updateProfile: (name: string) => api.put('/api/auth/profile', { name }),
 };
 
 export const bookApi = {

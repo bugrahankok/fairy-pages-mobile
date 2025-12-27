@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Image, StyleSheet, ActivityIndicator, Text, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-// Use your machine's IP address
-const API_BASE_URL = 'http://192.168.0.54:8080';
+import { LinearGradient } from 'expo-linear-gradient';
+import { API_BASE_URL } from '../services/api';
 
 interface BookCoverImageProps {
     bookId: number;
@@ -11,6 +10,7 @@ interface BookCoverImageProps {
     style?: any;
     width?: number;
     height?: number;
+    showOverlay?: boolean; // Add darkening overlay for better text readability
 }
 
 export default function BookCoverImage({
@@ -18,9 +18,11 @@ export default function BookCoverImage({
     hasCover = false,
     style,
     width = 140,
-    height = 200
+    height = 200,
+    showOverlay = false
 }: BookCoverImageProps) {
-    const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+    // If no cover exists, start in error state (show placeholder)
+    const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>(hasCover ? 'loading' : 'error');
     const [fadeAnim] = useState(new Animated.Value(0));
     const [retryCount, setRetryCount] = useState(0);
     const [imageKey, setImageKey] = useState(Date.now());
@@ -29,11 +31,15 @@ export default function BookCoverImage({
     const coverUrl = `${API_BASE_URL}/api/book/${bookId}/cover?t=${imageKey}`;
 
     useEffect(() => {
-        // Reset status when bookId changes
-        setStatus('loading');
-        setRetryCount(0);
-        setImageKey(Date.now());
-    }, [bookId]);
+        // Reset status when bookId or hasCover changes
+        if (hasCover) {
+            setStatus('loading');
+            setRetryCount(0);
+            setImageKey(Date.now());
+        } else {
+            setStatus('error'); // No cover, show placeholder
+        }
+    }, [bookId, hasCover]);
 
     // Cleanup retry timeout on unmount
     useEffect(() => {
@@ -60,7 +66,7 @@ export default function BookCoverImage({
                 setRetryCount(prev => prev + 1);
                 setImageKey(Date.now());
                 setStatus('loading');
-            }, 3000);
+            }, 3000) as unknown as NodeJS.Timeout;
         } else {
             setStatus('error');
         }
@@ -112,13 +118,19 @@ export default function BookCoverImage({
 
     // Loaded State - show actual cover image
     return (
-        <Animated.View style={[containerStyle, style, { opacity: fadeAnim }]}>
+        <Animated.View style={[containerStyle, style, { opacity: fadeAnim, overflow: 'hidden' }]}>
             <Image
                 key={imageKey}
                 source={{ uri: coverUrl }}
                 style={[styles.image, containerStyle]}
                 resizeMode="cover"
             />
+            {showOverlay && (
+                <LinearGradient
+                    colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.6)']}
+                    style={styles.overlay}
+                />
+            )}
         </Animated.View>
     );
 }
@@ -173,5 +185,14 @@ const styles = StyleSheet.create({
     },
     image: {
         borderRadius: 16,
+    },
+    overlay: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: '50%',
+        borderBottomLeftRadius: 16,
+        borderBottomRightRadius: 16,
     },
 });

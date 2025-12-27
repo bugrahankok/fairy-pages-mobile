@@ -21,6 +21,7 @@ import BookCoverImage from '../../components/BookCoverImage';
 interface Book {
     bookId: number;
     name: string;
+    title: string; // Actual book title
     theme: string;
     coverImagePath: string;
     createdAt: string;
@@ -168,7 +169,7 @@ export default function LibraryScreen() {
                                 width={(width - 48) / 2}
                                 height={180}
                             />
-                            <Text style={styles.bookTitle} numberOfLines={1}>{book.name}</Text>
+                            <Text style={styles.bookTitle} numberOfLines={1}>{book.title || `${book.name}'s Adventure`}</Text>
                             <Text style={styles.bookDate}>{formatDate(book.createdAt)}</Text>
                         </TouchableOpacity>
                     ))}

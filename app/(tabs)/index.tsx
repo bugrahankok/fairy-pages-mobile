@@ -22,6 +22,7 @@ import { themeColors } from '../../constants/Colors';
 interface Book {
   bookId: number;
   name: string;
+  title: string; // Actual book title
   theme: string;
   tone: string;
   content: string;
@@ -209,12 +210,13 @@ export default function DiscoverScreen() {
                 hasCover={!!featuredBook.coverImagePath}
                 width={width - 40}
                 height={200}
+                showOverlay={true}
               />
               <View style={styles.featuredOverlay}>
                 <View style={styles.aiBadge}>
                   <Text style={styles.aiBadgeText}>AI STORY</Text>
                 </View>
-                <Text style={styles.featuredTitle}>{featuredBook.name}</Text>
+                <Text style={styles.featuredTitle}>{featuredBook.title || `${featuredBook.name}'s ${featuredBook.theme} Adventure`}</Text>
                 <Text style={styles.featuredReaders}>+{featuredBook.viewCount} readers</Text>
               </View>
             </TouchableOpacity>
@@ -246,6 +248,7 @@ export default function DiscoverScreen() {
                     hasCover={!!book.coverImagePath}
                     width={140}
                     height={200}
+                    showOverlay={true}
                   />
                   <TouchableOpacity style={styles.heartButton}>
                     <Ionicons name="heart-outline" size={16} color="#9333ea" />
@@ -273,9 +276,10 @@ export default function DiscoverScreen() {
                       hasCover={!!book.coverImagePath}
                       width={100}
                       height={100}
+                      showOverlay={true}
                     />
                   </View>
-                  <Text style={styles.pickTitle} numberOfLines={1}>{book.name}</Text>
+                  <Text style={styles.pickTitle} numberOfLines={1}>{book.title || `${book.name}'s Adventure`}</Text>
                   <Text style={styles.pickTheme}>{book.theme}</Text>
                 </TouchableOpacity>
               ))}

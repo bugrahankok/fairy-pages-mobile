@@ -20,6 +20,7 @@ interface AuthContextType {
     register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
+    updateUser: (name: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -144,6 +145,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
     };
 
+    const updateUser = async (name: string) => {
+        try {
+            const response = await authApi.updateProfile(name);
+            const updatedUser = { ...user!, name: response.data.name || name };
+            setUser(updatedUser);
+            await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+            return { success: true };
+        } catch (error: any) {
+            console.error('Failed to update user:', error.message);
+            return { success: false, error: error.message || 'Failed to update profile' };
+        }
+    };
+
     return (
         <AuthContext.Provider value={{
             user,
@@ -154,6 +168,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             register,
             logout,
             refreshUser,
+            updateUser,
         }}>
             {children}
         </AuthContext.Provider>
