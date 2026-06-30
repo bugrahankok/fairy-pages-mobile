@@ -27,7 +27,8 @@ import {
     LANGUAGES,
     GENDERS,
     USER_TIERS,
-    TIER_LEVELS
+    TIER_LEVELS,
+    STORY_LENGTHS
 } from '../../constants/StoryOptions';
 
 interface PickerModalProps {
@@ -90,27 +91,29 @@ const PickerModal = ({ visible, title, options, selectedValue, onSelect, onClose
 const modalStyles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: 'rgba(58, 46, 43, 0.65)',
         justifyContent: 'flex-end',
     },
     container: {
-        backgroundColor: '#1a1025',
+        backgroundColor: '#FFFDF9',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         maxHeight: '70%',
+        borderWidth: 1.5,
+        borderColor: '#EADFC9',
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 20,
-        borderBottomWidth: 1,
-        borderBottomColor: '#241a35',
+        borderBottomWidth: 1.5,
+        borderBottomColor: '#EADFC9',
     },
     title: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#f9fafb',
+        color: '#3A2E2B',
     },
     option: {
         flexDirection: 'row',
@@ -119,17 +122,17 @@ const modalStyles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#241a35',
+        borderBottomColor: '#EADFC9',
     },
     optionSelected: {
-        backgroundColor: '#241a35',
+        backgroundColor: '#FFF0E6',
     },
     optionText: {
         fontSize: 16,
-        color: '#a1a1aa',
+        color: '#7A6B66',
     },
     optionTextSelected: {
-        color: '#a855f7',
+        color: '#FF8E53',
         fontWeight: '600',
     },
 });
@@ -152,6 +155,7 @@ export default function CreateScreen() {
     const [themeModalVisible, setThemeModalVisible] = useState(false);
     const [toneModalVisible, setToneModalVisible] = useState(false);
     const [styleModalVisible, setStyleModalVisible] = useState(false);
+    const [lengthModalVisible, setLengthModalVisible] = useState(false);
 
     const [formData, setFormData] = useState({
         bookTitle: '',
@@ -164,6 +168,7 @@ export default function CreateScreen() {
         tone: 'Playful',
         coverStyle: 'storybook',
         giver: 'Parent',
+        length: 'Short',
         isPublic: false,
     });
 
@@ -233,7 +238,6 @@ export default function CreateScreen() {
             const response = await bookApi.generate({
                 ...formData,
                 age: parseInt(formData.age),
-                length: 'Short',
             });
 
             const bookId = response.data.bookId;
@@ -295,11 +299,16 @@ export default function CreateScreen() {
                 style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
-                <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                    {/* Header */}
+                <ScrollView 
+                    style={styles.scrollView} 
+                    showsVerticalScrollIndicator={false}
+                    keyboardDismissMode="on-drag"
+                    keyboardShouldPersistTaps="handled"
+                >
+                     {/* Header */}
                     <View style={styles.header}>
                         <View style={styles.headerIcon}>
-                            <Ionicons name="sparkles" size={24} color="#a855f7" />
+                            <Ionicons name="sparkles" size={24} color="#FF8E53" />
                         </View>
                         <Text style={styles.headerTitle}>Create Story</Text>
                     </View>
@@ -315,11 +324,11 @@ export default function CreateScreen() {
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>BOOK TITLE</Text>
                         <View style={styles.inputContainer}>
-                            <Ionicons name="book" size={18} color="#a855f7" />
+                            <Ionicons name="book" size={18} color="#FF8E53" />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Ex: Space Cat Pamuk"
-                                placeholderTextColor="#9ca3af"
+                                placeholderTextColor="#7A6B66"
                                 value={formData.bookTitle}
                                 onChangeText={(text) => setFormData({ ...formData, bookTitle: text })}
                             />
@@ -331,7 +340,7 @@ export default function CreateScreen() {
                         <View style={styles.labelRow}>
                             <Text style={styles.label}>STORY TOPIC</Text>
                             <View style={styles.aiBadge}>
-                                <Ionicons name="sparkles" size={12} color="#a855f7" />
+                                <Ionicons name="sparkles" size={12} color="#8ECA94" />
                                 <Text style={styles.aiBadgeText}>AI Assistant</Text>
                             </View>
                         </View>
@@ -339,7 +348,7 @@ export default function CreateScreen() {
                             <TextInput
                                 style={[styles.input, styles.textArea]}
                                 placeholder="What should the story be about?..."
-                                placeholderTextColor="#9ca3af"
+                                placeholderTextColor="#7A6B66"
                                 multiline
                                 numberOfLines={3}
                                 value={formData.mainTopic}
@@ -353,13 +362,28 @@ export default function CreateScreen() {
                     <View style={styles.inputGroup}>
                         <Text style={styles.label}>CHILD'S NAME</Text>
                         <View style={styles.inputContainer}>
-                            <Ionicons name="person" size={18} color="#a855f7" />
+                            <Ionicons name="person" size={18} color="#FF8E53" />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Hero's name"
-                                placeholderTextColor="#9ca3af"
+                                placeholderTextColor="#7A6B66"
                                 value={formData.name}
                                 onChangeText={(text) => setFormData({ ...formData, name: text })}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Gift Giver */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>GIFT GIVER</Text>
+                        <View style={styles.inputContainer}>
+                            <Ionicons name="gift" size={18} color="#FF8E53" />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Who is giving this book (e.g. Mom, Dad)"
+                                placeholderTextColor="#7A6B66"
+                                value={formData.giver}
+                                onChangeText={(text) => setFormData({ ...formData, giver: text })}
                             />
                         </View>
                     </View>
@@ -373,7 +397,7 @@ export default function CreateScreen() {
                                 onPress={() => setGenderModalVisible(true)}
                             >
                                 <Text style={styles.selectText}>{getLabel(GENDERS, formData.gender)}</Text>
-                                <Ionicons name="chevron-down" size={18} color="#a855f7" />
+                                <Ionicons name="chevron-down" size={18} color="#FF8E53" />
                             </TouchableOpacity>
                         </View>
                         <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
@@ -383,7 +407,7 @@ export default function CreateScreen() {
                                 onPress={() => setAgeModalVisible(true)}
                             >
                                 <Text style={styles.selectText}>{getLabel(STORY_AGES, formData.age)}</Text>
-                                <Ionicons name="chevron-down" size={18} color="#a855f7" />
+                                <Ionicons name="chevron-down" size={18} color="#FF8E53" />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -396,10 +420,10 @@ export default function CreateScreen() {
                             onPress={() => setLanguageModalVisible(true)}
                         >
                             <View style={styles.selectContent}>
-                                <Ionicons name="globe" size={18} color="#a855f7" />
+                                <Ionicons name="globe" size={18} color="#FF8E53" />
                                 <Text style={[styles.selectText, { marginLeft: 10 }]}>{getLabel(LANGUAGES, formData.language)}</Text>
                             </View>
-                            <Ionicons name="chevron-down" size={18} color="#a855f7" />
+                            <Ionicons name="chevron-down" size={18} color="#FF8E53" />
                         </TouchableOpacity>
                     </View>
 
@@ -411,10 +435,10 @@ export default function CreateScreen() {
                             onPress={() => setThemeModalVisible(true)}
                         >
                             <View style={styles.selectContent}>
-                                <Ionicons name="color-palette" size={18} color="#a855f7" />
+                                <Ionicons name="color-palette" size={18} color="#FF8E53" />
                                 <Text style={[styles.selectText, { marginLeft: 10 }]}>{formData.theme}</Text>
                             </View>
-                            <Ionicons name="chevron-down" size={18} color="#a855f7" />
+                            <Ionicons name="chevron-down" size={18} color="#FF8E53" />
                         </TouchableOpacity>
                     </View>
 
@@ -426,10 +450,10 @@ export default function CreateScreen() {
                             onPress={() => setToneModalVisible(true)}
                         >
                             <View style={styles.selectContent}>
-                                <Ionicons name="happy" size={18} color="#a855f7" />
+                                <Ionicons name="happy" size={18} color="#FF8E53" />
                                 <Text style={[styles.selectText, { marginLeft: 10 }]}>{formData.tone}</Text>
                             </View>
-                            <Ionicons name="chevron-down" size={18} color="#a855f7" />
+                            <Ionicons name="chevron-down" size={18} color="#FF8E53" />
                         </TouchableOpacity>
                     </View>
 
@@ -441,10 +465,25 @@ export default function CreateScreen() {
                             onPress={() => setStyleModalVisible(true)}
                         >
                             <View style={styles.selectContent}>
-                                <Ionicons name="image" size={18} color="#a855f7" />
+                                <Ionicons name="image" size={18} color="#FF8E53" />
                                 <Text style={[styles.selectText, { marginLeft: 10 }]}>{getLabel(COVER_STYLES, formData.coverStyle)}</Text>
                             </View>
-                            <Ionicons name="chevron-down" size={18} color="#a855f7" />
+                            <Ionicons name="chevron-down" size={18} color="#FF8E53" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Story Length */}
+                    <View style={styles.inputGroup}>
+                        <Text style={styles.label}>STORY LENGTH</Text>
+                        <TouchableOpacity
+                            style={styles.selectContainer}
+                            onPress={() => setLengthModalVisible(true)}
+                        >
+                            <View style={styles.selectContent}>
+                                <Ionicons name="time" size={18} color="#FF8E53" />
+                                <Text style={[styles.selectText, { marginLeft: 10 }]}>{getLabel(STORY_LENGTHS, formData.length)}</Text>
+                            </View>
+                            <Ionicons name="chevron-down" size={18} color="#FF8E53" />
                         </TouchableOpacity>
                     </View>
 
@@ -456,7 +495,7 @@ export default function CreateScreen() {
                                 <Ionicons
                                     name={formData.isPublic ? 'globe' : 'lock-closed'}
                                     size={20}
-                                    color={formData.isPublic ? '#22c55e' : '#6b7280'}
+                                    color={formData.isPublic ? '#8ECA94' : '#7A6B66'}
                                 />
                                 <View style={styles.toggleTextContainer}>
                                     <Text style={styles.toggleTitle}>
@@ -472,8 +511,8 @@ export default function CreateScreen() {
                             <Switch
                                 value={formData.isPublic}
                                 onValueChange={(value) => setFormData({ ...formData, isPublic: value })}
-                                trackColor={{ false: '#e5e7eb', true: '#bbf7d0' }}
-                                thumbColor={formData.isPublic ? '#22c55e' : '#9ca3af'}
+                                trackColor={{ false: '#EADFC9', true: '#A1DAB4' }}
+                                thumbColor={formData.isPublic ? '#8ECA94' : '#8D7D77'}
                             />
                         </View>
                     </View>
@@ -554,6 +593,15 @@ export default function CreateScreen() {
                 onClose={() => setStyleModalVisible(false)}
                 userTier={userTier}
             />
+            <PickerModal
+                visible={lengthModalVisible}
+                title="Select Story Length"
+                options={STORY_LENGTHS}
+                selectedValue={formData.length}
+                onSelect={(value) => setFormData({ ...formData, length: value })}
+                onClose={() => setLengthModalVisible(false)}
+                userTier={userTier}
+            />
         </SafeAreaView>
     );
 }
@@ -561,7 +609,7 @@ export default function CreateScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0f0a1a',
+        backgroundColor: '#FAF6EE',
     },
     scrollView: {
         flex: 1,
@@ -576,7 +624,9 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: '#241a35',
+        backgroundColor: '#FFFDF9',
+        borderWidth: 1.5,
+        borderColor: '#EADFC9',
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
@@ -584,7 +634,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#a855f7',
+        color: '#FF8E53',
     },
     titleSection: {
         marginBottom: 28,
@@ -592,16 +642,16 @@ const styles = StyleSheet.create({
     mainTitle: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: '#f9fafb',
+        color: '#3A2E2B',
     },
     mainTitleAccent: {
         fontSize: 32,
         fontWeight: 'bold',
-        color: '#a855f7',
+        color: '#FF8E53',
     },
     subtitle: {
         fontSize: 15,
-        color: '#9ca3af',
+        color: '#7A6B66',
         marginTop: 8,
     },
     inputGroup: {
@@ -610,7 +660,7 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 11,
         fontWeight: '700',
-        color: '#a1a1aa',
+        color: '#7A6B66',
         marginBottom: 8,
         letterSpacing: 0.8,
     },
@@ -623,13 +673,13 @@ const styles = StyleSheet.create({
     aiBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#241a35',
+        backgroundColor: '#EAF6EC',
         paddingHorizontal: 10,
         paddingVertical: 4,
         borderRadius: 12,
     },
     aiBadgeText: {
-        color: '#a855f7',
+        color: '#8ECA94',
         fontSize: 11,
         fontWeight: '700',
         marginLeft: 4,
@@ -637,12 +687,12 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1a1025',
+        backgroundColor: '#FFFDF9',
         borderRadius: 16,
         paddingHorizontal: 16,
         paddingVertical: 16,
         borderWidth: 1.5,
-        borderColor: '#241a35',
+        borderColor: '#EADFC9',
     },
     textAreaContainer: {
         alignItems: 'flex-start',
@@ -651,7 +701,7 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         fontSize: 16,
-        color: '#f9fafb',
+        color: '#3A2E2B',
         marginLeft: 10,
     },
     textArea: {
@@ -666,12 +716,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#1a1025',
+        backgroundColor: '#FFFDF9',
         borderRadius: 16,
         paddingHorizontal: 16,
         paddingVertical: 16,
         borderWidth: 1.5,
-        borderColor: '#241a35',
+        borderColor: '#EADFC9',
     },
     selectContent: {
         flexDirection: 'row',
@@ -679,17 +729,17 @@ const styles = StyleSheet.create({
     },
     selectText: {
         fontSize: 16,
-        color: '#a1a1aa',
+        color: '#3A2E2B',
     },
     createButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#a855f7',
+        backgroundColor: '#FF8E53',
         borderRadius: 20,
         paddingVertical: 18,
         marginTop: 12,
-        shadowColor: '#a855f7',
+        shadowColor: '#FF8E53',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.35,
         shadowRadius: 12,
@@ -708,12 +758,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#1a1025',
+        backgroundColor: '#FFFDF9',
         borderRadius: 16,
         paddingHorizontal: 16,
         paddingVertical: 16,
         borderWidth: 1.5,
-        borderColor: '#241a35',
+        borderColor: '#EADFC9',
     },
     toggleInfo: {
         flexDirection: 'row',
@@ -727,11 +777,11 @@ const styles = StyleSheet.create({
     toggleTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#f9fafb',
+        color: '#3A2E2B',
     },
     toggleDescription: {
         fontSize: 12,
-        color: '#9ca3af',
+        color: '#7A6B66',
         marginTop: 2,
     },
 });

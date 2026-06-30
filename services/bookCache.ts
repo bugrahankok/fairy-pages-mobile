@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Book } from '../types';
 
 const CACHE_KEYS = {
     DISCOVER_BOOKS: 'cache_discover_books',
@@ -16,9 +17,9 @@ interface CacheData<T> {
 
 export const bookCache = {
     // Save books to cache
-    async saveDiscoverBooks(books: any[]): Promise<void> {
+    async saveDiscoverBooks(books: Book[]): Promise<void> {
         try {
-            const cacheData: CacheData<any[]> = {
+            const cacheData: CacheData<Book[]> = {
                 data: books,
                 timestamp: Date.now(),
             };
@@ -30,12 +31,12 @@ export const bookCache = {
     },
 
     // Get cached discover books
-    async getDiscoverBooks(): Promise<any[] | null> {
+    async getDiscoverBooks(): Promise<Book[] | null> {
         try {
             const cached = await AsyncStorage.getItem(CACHE_KEYS.DISCOVER_BOOKS);
             if (!cached) return null;
 
-            const cacheData: CacheData<any[]> = JSON.parse(cached);
+            const cacheData: CacheData<Book[]> = JSON.parse(cached);
 
             // Check if cache is still valid
             if (Date.now() - cacheData.timestamp < CACHE_DURATION) {
@@ -51,9 +52,9 @@ export const bookCache = {
     },
 
     // Save library books to cache
-    async saveLibraryBooks(books: any[]): Promise<void> {
+    async saveLibraryBooks(books: Book[]): Promise<void> {
         try {
-            const cacheData: CacheData<any[]> = {
+            const cacheData: CacheData<Book[]> = {
                 data: books,
                 timestamp: Date.now(),
             };
@@ -65,12 +66,12 @@ export const bookCache = {
     },
 
     // Get cached library books
-    async getLibraryBooks(): Promise<any[] | null> {
+    async getLibraryBooks(): Promise<Book[] | null> {
         try {
             const cached = await AsyncStorage.getItem(CACHE_KEYS.LIBRARY_BOOKS);
             if (!cached) return null;
 
-            const cacheData: CacheData<any[]> = JSON.parse(cached);
+            const cacheData: CacheData<Book[]> = JSON.parse(cached);
 
             // Check if cache is still valid
             if (Date.now() - cacheData.timestamp < CACHE_DURATION) {

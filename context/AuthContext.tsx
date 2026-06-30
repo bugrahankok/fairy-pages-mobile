@@ -1,15 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authApi } from '../services/api';
-
-interface User {
-    userId: number;
-    name: string;
-    email: string;
-    isPremium: boolean;
-    isAdmin: boolean;
-    premiumExpiresAt?: string;
-}
+import { User } from '../types';
 
 interface AuthContextType {
     user: User | null;
@@ -56,24 +48,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const data = response.data;
 
             await AsyncStorage.setItem('token', data.token);
-            await AsyncStorage.setItem('user', JSON.stringify({
+            const userObj: User = {
                 userId: data.userId,
                 name: data.name,
                 email: data.email,
                 isPremium: data.isPremium,
                 isAdmin: data.isAdmin,
+                tier: data.tier || (data.isPremium ? 'premium' : 'free'),
                 premiumExpiresAt: data.premiumExpiresAt,
-            }));
+            };
+            await AsyncStorage.setItem('user', JSON.stringify(userObj));
 
             setToken(data.token);
-            setUser({
-                userId: data.userId,
-                name: data.name,
-                email: data.email,
-                isPremium: data.isPremium,
-                isAdmin: data.isAdmin,
-                premiumExpiresAt: data.premiumExpiresAt,
-            });
+            setUser(userObj);
 
             return { success: true };
         } catch (error: any) {
@@ -87,22 +74,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const data = response.data;
 
             await AsyncStorage.setItem('token', data.token);
-            await AsyncStorage.setItem('user', JSON.stringify({
+            const userObj: User = {
                 userId: data.userId,
                 name: data.name,
                 email: data.email,
                 isPremium: data.isPremium,
                 isAdmin: data.isAdmin,
-            }));
+                tier: data.tier || (data.isPremium ? 'premium' : 'free'),
+                premiumExpiresAt: data.premiumExpiresAt,
+            };
+            await AsyncStorage.setItem('user', JSON.stringify(userObj));
 
             setToken(data.token);
-            setUser({
-                userId: data.userId,
-                name: data.name,
-                email: data.email,
-                isPremium: data.isPremium,
-                isAdmin: data.isAdmin,
-            });
+            setUser(userObj);
 
             return { success: true };
         } catch (error: any) {
@@ -126,12 +110,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const response = await authApi.getMe();
             const data = response.data;
 
-            const updatedUser = {
+            const updatedUser: User = {
                 userId: data.userId,
                 name: data.name,
                 email: data.email,
                 isPremium: data.isPremium,
                 isAdmin: data.isAdmin,
+                tier: data.tier || (data.isPremium ? 'premium' : 'free'),
                 premiumExpiresAt: data.premiumExpiresAt,
             };
 
@@ -139,9 +124,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(updatedUser);
             console.log('✅ User data refreshed successfully');
         } catch (error: any) {
-            // DON'T logout on any error - keep user logged in until they manually logout
-            // The token might still be valid for other endpoints
-            console.warn('⚠️ Could not refresh user data, continuing with cached data');
+            console.warn('⚠️ Could not refresh user data:', error.message);
+            // If the error is 401 Unauthorized, log out the user
+            if (error.response?.status === 401) {
+                console.log('🔐 Session expired (401), logging out...');
+                await logout();
+            }
         }
     };
 

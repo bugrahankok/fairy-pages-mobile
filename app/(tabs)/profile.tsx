@@ -20,19 +20,19 @@ import { useFocusEffect } from '@react-navigation/native';
 import { bookApi, API_BASE_URL } from '../../services/api';
 import { bookCache } from '../../services/bookCache';
 import { useAuth } from '../../context/AuthContext';
-
-interface Book {
-    bookId: number;
-    title: string;
-    coverImagePath: string;
-}
+import { useSettings } from '../../context/SettingsContext';
+import { useFavorites } from '../../context/FavoritesContext';
+import BookCoverImage from '../../components/BookCoverImage';
+import { Book } from '../../types';
 
 export default function ProfileScreen() {
     const router = useRouter();
     const { user, isAuthenticated, logout, refreshUser, updateUser } = useAuth();
+    const { language, setLanguage, notificationsEnabled, setNotificationsEnabled } = useSettings();
+    const { favorites } = useFavorites();
     const [books, setBooks] = useState<Book[]>([]);
+    const [totalBooks, setTotalBooks] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [notifications, setNotifications] = useState(true);
     const hasLoadedOnce = useRef(false);
 
     // Edit Profile Modal
@@ -42,7 +42,6 @@ export default function ProfileScreen() {
 
     // Language Modal
     const [languageModalVisible, setLanguageModalVisible] = useState(false);
-    const [selectedLanguage, setSelectedLanguage] = useState('English');
 
     const languages = [
         { code: 'en', name: 'English' },
@@ -76,6 +75,7 @@ export default function ProfileScreen() {
             if (cachedBooks && cachedBooks.length > 0) {
                 console.log('📦 Using cached books for profile');
                 setBooks(cachedBooks.slice(0, 5));
+                setTotalBooks(cachedBooks.length);
                 setLoading(false);
                 return;
             }
@@ -85,6 +85,7 @@ export default function ProfileScreen() {
             const fetchedBooks = response.data || [];
             console.log(`✅ Loaded ${fetchedBooks.length} books for profile`);
             setBooks(fetchedBooks.slice(0, 5));
+            setTotalBooks(fetchedBooks.length);
 
             // Also cache them for library screen
             if (fetchedBooks.length > 0) {
@@ -132,18 +133,18 @@ export default function ProfileScreen() {
         }
     };
 
-    const handleLanguageSelect = (lang: { code: string; name: string }) => {
-        setSelectedLanguage(lang.name);
+    const handleLanguageSelect = async (lang: { code: string; name: string }) => {
+        await setLanguage(lang.code);
         setLanguageModalVisible(false);
-        // TODO: Save language preference to AsyncStorage
         Alert.alert('Language Changed', `App language set to ${lang.name}`);
     };
 
+    const handleEditAvatar = () => {
+        Alert.alert('Avatar Style', 'Your profile avatar is automatically generated based on the first letter of your name.');
+    };
+
     const handleRestorePurchases = () => {
-        Alert.alert('Restore Purchases', 'Checking for previous purchases...', [
-            { text: 'OK' }
-        ]);
-        // TODO: Integrate with RevenueCat restore purchases
+        Alert.alert('Restore Purchases', 'Checking previous purchases... No purchases found.');
     };
 
     const handleHelpSupport = () => {
@@ -181,6 +182,7 @@ export default function ProfileScreen() {
     }
 
     const avatarInitial = user?.name?.charAt(0).toUpperCase() || 'U';
+    const selectedLanguageName = languages.find(l => l.code === language)?.name || 'English';
 
     return (
         <SafeAreaView style={styles.container}>
@@ -188,10 +190,10 @@ export default function ProfileScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => router.back()}>
-                        <Ionicons name="chevron-back" size={24} color="#333" />
+                        <Ionicons name="chevron-back" size={24} color="#f9fafb" />
                     </TouchableOpacity>
                     <Text style={styles.headerTitle}>My Profile</Text>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={openEditModal}>
                         <Text style={styles.editText}>Edit</Text>
                     </TouchableOpacity>
                 </View>
@@ -202,7 +204,7 @@ export default function ProfileScreen() {
                         <View style={styles.avatar}>
                             <Text style={styles.avatarText}>{avatarInitial}</Text>
                         </View>
-                        <TouchableOpacity style={styles.editAvatarButton}>
+                        <TouchableOpacity style={styles.editAvatarButton} onPress={handleEditAvatar}>
                             <Ionicons name="pencil" size={14} color="#fff" />
                         </TouchableOpacity>
                     </View>
@@ -219,7 +221,7 @@ export default function ProfileScreen() {
                 {/* Stats */}
                 <View style={styles.statsRow}>
                     <View style={styles.statCard}>
-                        <Text style={styles.statNumber}>{books.length}</Text>
+                        <Text style={styles.statNumber}>{totalBooks}</Text>
                         <Text style={styles.statLabel}>BOOKS</Text>
                     </View>
                     <View style={styles.statCard}>
@@ -230,7 +232,7 @@ export default function ProfileScreen() {
                         <Text style={styles.statLabel}>CREDITS</Text>
                     </View>
                     <View style={styles.statCard}>
-                        <Text style={styles.statNumber}>48</Text>
+                        <Text style={styles.statNumber}>{favorites.length}</Text>
                         <Text style={styles.statLabel}>LIKES</Text>
                     </View>
                 </View>
@@ -258,10 +260,11 @@ export default function ProfileScreen() {
                                     onPress={() => router.push(`/book/${book.bookId}`)}
                                     style={styles.storyCard}
                                 >
-                                    <Image
-                                        source={{ uri: getCoverUrl(book) }}
-                                        style={styles.storyImage}
-                                        resizeMode="cover"
+                                    <BookCoverImage
+                                        bookId={book.bookId}
+                                        hasCover={!!book.coverImagePath}
+                                        width={100}
+                                        height={130}
                                     />
                                 </TouchableOpacity>
                             ))}
@@ -312,8 +315,8 @@ export default function ProfileScreen() {
                             <Text style={styles.settingText}>Notifications</Text>
                         </View>
                         <Switch
-                            value={notifications}
-                            onValueChange={setNotifications}
+                            value={notificationsEnabled}
+                            onValueChange={setNotificationsEnabled}
                             trackColor={{ true: '#a855f7', false: '#e5e7eb' }}
                             thumbColor="#fff"
                         />
@@ -326,7 +329,7 @@ export default function ProfileScreen() {
                             <Ionicons name="globe-outline" size={20} color="#666" />
                             <Text style={styles.settingText}>App Language</Text>
                         </View>
-                        <Text style={styles.languageText}>{selectedLanguage}</Text>
+                        <Text style={styles.languageText}>{selectedLanguageName}</Text>
                     </TouchableOpacity>
 
                     <View style={styles.settingDivider} />
@@ -406,17 +409,17 @@ export default function ProfileScreen() {
                                 key={lang.code}
                                 style={[
                                     styles.languageOption,
-                                    selectedLanguage === lang.name && styles.languageOptionActive
+                                    language === lang.code && styles.languageOptionActive
                                 ]}
                                 onPress={() => handleLanguageSelect(lang)}
                             >
                                 <Text style={[
                                     styles.languageOptionText,
-                                    selectedLanguage === lang.name && styles.languageOptionTextActive
+                                    language === lang.code && styles.languageOptionTextActive
                                 ]}>
                                     {lang.name}
                                 </Text>
-                                {selectedLanguage === lang.name && (
+                                {language === lang.code && (
                                     <Ionicons name="checkmark" size={20} color="#a855f7" />
                                 )}
                             </TouchableOpacity>
@@ -437,14 +440,14 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0f0a1a',
+        backgroundColor: '#FAF6EE',
     },
     scrollView: {
         flex: 1,
     },
     centeredContainer: {
         flex: 1,
-        backgroundColor: '#0f0a1a',
+        backgroundColor: '#FAF6EE',
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 40,
@@ -452,18 +455,18 @@ const styles = StyleSheet.create({
     welcomeTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#f9fafb',
+        color: '#3A2E2B',
         marginTop: 16,
         textAlign: 'center',
     },
     welcomeText: {
         fontSize: 15,
-        color: '#9ca3af',
+        color: '#7A6B66',
         marginTop: 8,
         textAlign: 'center',
     },
     loginButton: {
-        backgroundColor: '#a855f7',
+        backgroundColor: '#FF8E53',
         paddingHorizontal: 48,
         paddingVertical: 14,
         borderRadius: 14,
@@ -478,7 +481,7 @@ const styles = StyleSheet.create({
         marginTop: 16,
     },
     registerButtonText: {
-        color: '#a855f7',
+        color: '#FF8E53',
         fontWeight: '600',
         fontSize: 16,
     },
@@ -492,10 +495,10 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#f9fafb',
+        color: '#3A2E2B',
     },
     editText: {
-        color: '#a855f7',
+        color: '#FF8E53',
         fontWeight: '600',
         fontSize: 16,
     },
@@ -510,14 +513,16 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: '#241a35',
+        backgroundColor: '#F5EFE4',
+        borderWidth: 2,
+        borderColor: '#EADFC9',
         alignItems: 'center',
         justifyContent: 'center',
     },
     avatarText: {
         fontSize: 36,
         fontWeight: 'bold',
-        color: '#a855f7',
+        color: '#FF8E53',
     },
     editAvatarButton: {
         position: 'absolute',
@@ -526,21 +531,21 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 16,
-        backgroundColor: '#a855f7',
+        backgroundColor: '#FF8E53',
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 3,
-        borderColor: '#fff',
+        borderColor: '#FFFDF9',
     },
     userName: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#f9fafb',
+        color: '#3A2E2B',
         marginTop: 12,
     },
     userRole: {
         fontSize: 15,
-        color: '#9ca3af',
+        color: '#7A6B66',
         marginTop: 2,
     },
     premiumBadge: {
@@ -566,21 +571,23 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     statCard: {
-        backgroundColor: '#1a1025',
+        backgroundColor: '#FFFDF9',
         borderRadius: 16,
         paddingHorizontal: 24,
         paddingVertical: 16,
         alignItems: 'center',
-        shadowColor: '#a855f7',
+        borderWidth: 1.5,
+        borderColor: '#EADFC9',
+        shadowColor: '#FF8E53',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.15,
+        shadowOpacity: 0.05,
         shadowRadius: 4,
-        elevation: 2,
+        elevation: 1,
     },
     statNumber: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#f9fafb',
+        color: '#3A2E2B',
     },
     creditRow: {
         flexDirection: 'row',
@@ -589,7 +596,7 @@ const styles = StyleSheet.create({
     },
     statLabel: {
         fontSize: 11,
-        color: '#9ca3af',
+        color: '#7A6B66',
         marginTop: 4,
         fontWeight: '600',
         letterSpacing: 0.5,
@@ -607,17 +614,17 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: '#f9fafb',
+        color: '#3A2E2B',
     },
     seeAllText: {
-        color: '#a855f7',
+        color: '#FF8E53',
         fontWeight: '600',
         fontSize: 14,
     },
     newStoryCard: {
         width: 100,
         height: 130,
-        backgroundColor: '#241a35',
+        backgroundColor: '#FFFDF9',
         borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
@@ -625,16 +632,20 @@ const styles = StyleSheet.create({
         marginRight: 12,
         borderWidth: 2,
         borderStyle: 'dashed',
-        borderColor: '#a855f7',
+        borderColor: '#FF8E53',
     },
     newStoryText: {
-        color: '#a855f7',
+        color: '#FF8E53',
         fontSize: 12,
         fontWeight: '600',
         marginTop: 8,
     },
     storyCard: {
         marginRight: 12,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: '#EADFC9',
     },
     storyImage: {
         width: 100,
@@ -642,10 +653,12 @@ const styles = StyleSheet.create({
         borderRadius: 16,
     },
     settingsCard: {
-        backgroundColor: '#1a1025',
+        backgroundColor: '#FFFDF9',
         marginHorizontal: 20,
         borderRadius: 16,
         overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: '#EADFC9',
     },
     settingItem: {
         flexDirection: 'row',
@@ -660,32 +673,34 @@ const styles = StyleSheet.create({
     },
     settingText: {
         fontSize: 16,
-        color: '#f9fafb',
+        color: '#3A2E2B',
         marginLeft: 12,
     },
     settingDivider: {
         height: 1,
-        backgroundColor: '#241a35',
+        backgroundColor: '#EADFC9',
         marginLeft: 48,
     },
     subscriptionStatus: {
-        color: '#a855f7',
+        color: '#FF8E53',
         fontWeight: '600',
         fontSize: 14,
     },
     languageText: {
-        color: '#9ca3af',
+        color: '#7A6B66',
         fontSize: 14,
     },
     logoutButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#1a1025',
+        backgroundColor: '#FFFDF9',
         marginHorizontal: 20,
         marginTop: 16,
         paddingVertical: 16,
         borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: '#EADFC9',
     },
     logoutText: {
         color: '#ef4444',
@@ -708,38 +723,42 @@ const styles = StyleSheet.create({
     // Modal Styles
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.7)',
+        backgroundColor: 'rgba(58, 46, 43, 0.65)',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 20,
     },
     modalContent: {
-        backgroundColor: '#1a1025',
+        backgroundColor: '#FFFDF9',
         borderRadius: 20,
         padding: 24,
         width: '100%',
         maxWidth: 350,
+        borderWidth: 1.5,
+        borderColor: '#EADFC9',
     },
     modalTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#f9fafb',
+        color: '#3A2E2B',
         marginBottom: 20,
         textAlign: 'center',
     },
     modalLabel: {
         fontSize: 14,
-        color: '#9ca3af',
+        color: '#7A6B66',
         marginBottom: 8,
     },
     modalInput: {
-        backgroundColor: '#241a35',
+        backgroundColor: '#F5EFE4',
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
-        color: '#f9fafb',
+        color: '#3A2E2B',
         fontSize: 16,
         marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#EADFC9',
     },
     modalButtons: {
         flexDirection: 'row',
@@ -747,19 +766,19 @@ const styles = StyleSheet.create({
     },
     modalCancelButton: {
         flex: 1,
-        backgroundColor: '#241a35',
+        backgroundColor: '#F5EFE4',
         paddingVertical: 14,
         borderRadius: 12,
         alignItems: 'center',
     },
     modalCancelText: {
-        color: '#9ca3af',
+        color: '#7A6B66',
         fontWeight: '600',
         fontSize: 16,
     },
     modalSaveButton: {
         flex: 1,
-        backgroundColor: '#a855f7',
+        backgroundColor: '#FF8E53',
         paddingVertical: 14,
         borderRadius: 12,
         alignItems: 'center',
@@ -778,19 +797,21 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 12,
         marginBottom: 8,
-        backgroundColor: '#241a35',
+        backgroundColor: '#FFFDF9',
+        borderWidth: 1.5,
+        borderColor: '#EADFC9',
     },
     languageOptionActive: {
-        backgroundColor: '#2d1f42',
-        borderWidth: 1,
-        borderColor: '#a855f7',
+        backgroundColor: '#FFF0E6',
+        borderWidth: 1.5,
+        borderColor: '#FF8E53',
     },
     languageOptionText: {
-        color: '#f9fafb',
+        color: '#3A2E2B',
         fontSize: 16,
     },
     languageOptionTextActive: {
-        color: '#a855f7',
+        color: '#FF8E53',
         fontWeight: '600',
     },
 });

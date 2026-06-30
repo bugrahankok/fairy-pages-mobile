@@ -1,14 +1,13 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
-import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Tabs } from 'expo-router';
+import { StyleSheet, View } from 'react-native';
 
 export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#9333ea',
-        tabBarInactiveTintColor: '#9ca3af',
+        tabBarActiveTintColor: '#FF8E53',
+        tabBarInactiveTintColor: '#8D7D77',
         headerShown: false,
         tabBarShowLabel: true,
         tabBarLabelStyle: styles.tabLabel,
@@ -39,7 +38,7 @@ export default function TabLayout() {
           title: '',
           tabBarIcon: ({ focused }) => (
             <View style={[styles.createButton, focused && styles.createButtonActive]}>
-              <Ionicons name="add" size={28} color="#fff" />
+              <Ionicons name="sparkles" size={24} color="#fff" />
             </View>
           ),
         }}
@@ -73,16 +72,19 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     height: 70,
-    backgroundColor: '#1a1025',
+    backgroundColor: '#FFFDF9',
     borderRadius: 24,
-    borderTopWidth: 0,
+    borderWidth: 1.5,
+    borderColor: '#EADFC9',
+    borderTopWidth: 1.5,
+    borderTopColor: '#EADFC9',
     paddingBottom: 8,
     paddingTop: 8,
-    shadowColor: '#a855f7',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 24,
-    elevation: 16,
+    shadowColor: '#FF8E53',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
   },
   tabLabel: {
     fontSize: 10,
@@ -92,17 +94,18 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#a855f7',
+    backgroundColor: '#FF8E53',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: -18,
-    shadowColor: '#a855f7',
+    shadowColor: '#FF8E53',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 12,
-    elevation: 10,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 8,
   },
   createButtonActive: {
-    backgroundColor: '#c084fc',
+    backgroundColor: '#8ECA94',
+    shadowColor: '#8ECA94',
   },
 });

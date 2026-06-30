@@ -1,31 +1,39 @@
 {
   "expo": {
-    "name": "fairy-pages-mobile",
+    "name": "Fairy Pages",
     "slug": "fairy-pages-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "fairypagesmobile",
-    "userInterfaceStyle": "automatic",
+    "scheme": "fairypages",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0f0a1a"
     },
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.fairypages.mobile",
       "infoPlist": {
         "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true,
-          "NSAllowsLocalNetworking": true
+          "NSAllowsArbitraryLoads": false,
+          "NSAllowsLocalNetworking": true,
+          "NSExceptionDomains": {
+            "fairypages.com": {
+              "NSExceptionAllowsInsecureHTTPLoads": false,
+              "NSIncludesSubdomains": true
+            }
+          }
         }
       }
     },
     "android": {
+      "package": "com.fairypages.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#0f0a1a"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

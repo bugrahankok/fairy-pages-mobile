@@ -1,54 +1,54 @@
-// Primary purple theme colors - DARK THEME
-const tintColorLight = '#a855f7';
-const tintColorDark = '#c084fc';
+// Storybook Theme Colors: Cozy Orange, Soft Sage Green, and Cream Pastels
 
-// Purple gradient palette for circles/orbs
+const tintColorLight = '#FF8E53'; // Warm Pastel Orange
+const tintColorDark = '#8ECA94'; // Warm Sage Green
+
 export const gradientColors = {
-  primary: ['#9333ea', '#a855f7', '#c084fc'],
-  secondary: ['#7c3aed', '#8b5cf6', '#a78bfa'],
-  accent: ['#6d28d9', '#7c3aed', '#8b5cf6'],
-  // For gradient orbs/circles on dark background
-  orbLight: ['rgba(168, 85, 247, 0.3)', 'rgba(192, 132, 252, 0.2)', 'transparent'],
-  orbDark: ['rgba(147, 51, 234, 0.4)', 'rgba(124, 58, 237, 0.3)', 'transparent'],
+  primary: ['#FFB085', '#FF8E53', '#E67E45'], // Orange gradient
+  secondary: ['#A1DAB4', '#8ECA94', '#78B87E'], // Green gradient
+  accent: ['#FFF0E6', '#EAF6EC', '#FAF5EC'], // Soft pastel cream backgrounds
+  orbLight: ['rgba(255, 142, 83, 0.15)', 'rgba(255, 176, 133, 0.1)', 'transparent'],
+  orbDark: ['rgba(142, 202, 148, 0.15)', 'rgba(161, 218, 180, 0.1)', 'transparent'],
 };
 
-// Main theme colors - DARK MODE
 export const themeColors = {
-  primary: '#a855f7',
-  primaryLight: '#c084fc',
-  primaryDark: '#7c3aed',
-  background: '#0f0a1a', // Very dark purple
-  surface: '#1a1025',    // Slightly lighter dark purple
-  card: '#241a35',       // Card background
-  text: '#f9fafb',
-  textSecondary: '#a1a1aa',
+  primary: '#FF8E53',      // Cozy Orange
+  secondary: '#8ECA94',    // Soft Green
+  primaryLight: '#FFB085',
+  secondaryLight: '#A1DAB4',
+  background: '#FAF6EE',   // Warm soft cream paper background
+  surface: '#FFFDF9',      // White paper surface
+  card: '#F5EFE4',         // Warm sand card background
+  text: '#3A2E2B',         // Deep charcoal brown for soft readability
+  textSecondary: '#7A6B66', // Muted brown-gray
+  border: '#EADFC9',       // Soft vintage border
 };
 
 export default {
   light: {
-    text: '#f9fafb',
-    background: '#0f0a1a',
+    text: '#3A2E2B',
+    background: '#FAF6EE',
     tint: tintColorLight,
-    tabIconDefault: '#6b7280',
+    tabIconDefault: '#8D7D77',
     tabIconSelected: tintColorLight,
-    primary: '#a855f7',
-    primaryLight: '#c084fc',
-    gradientStart: '#9333ea',
-    gradientEnd: '#c084fc',
-    surface: '#1a1025',
-    card: '#241a35',
+    primary: '#FF8E53',
+    secondary: '#8ECA94',
+    gradientStart: '#FFB085',
+    gradientEnd: '#FF8E53',
+    surface: '#FFFDF9',
+    card: '#F5EFE4',
   },
-  dark: {
-    text: '#f9fafb',
-    background: '#0f0a1a',
+  dark: { // Since we want a consistent cozy pastel look, even "dark" is styled as warm sepia/dark cream
+    text: '#FFFDF9',
+    background: '#2B211F',  // Very deep warm brown for cozy night reading
     tint: tintColorDark,
-    tabIconDefault: '#6b7280',
+    tabIconDefault: '#8D7D77',
     tabIconSelected: tintColorDark,
-    primary: '#a855f7',
-    primaryLight: '#c084fc',
-    gradientStart: '#7c3aed',
-    gradientEnd: '#a855f7',
-    surface: '#1a1025',
-    card: '#241a35',
+    primary: '#8ECA94',
+    secondary: '#FF8E53',
+    gradientStart: '#A1DAB4',
+    gradientEnd: '#8ECA94',
+    surface: '#3A2E2B',
+    card: '#4E3E39',
   },
 };
