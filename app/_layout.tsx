@@ -8,6 +8,9 @@ import 'react-native-reanimated';
 import '../global.css';
 
 import { AuthProvider } from '../context/AuthContext';
+import { SettingsProvider } from '../context/SettingsContext';
+import { FavoritesProvider } from '../context/FavoritesContext';
+import { purchasesService } from '../services/purchases';
 
 export {
   ErrorBoundary,
@@ -32,6 +35,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
+      purchasesService.initPurchases().catch(err => {
+        console.warn('Failed to initialize purchases:', err);
+      });
     }
   }, [loaded]);
 
@@ -41,7 +47,11 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <RootLayoutNav />
+      <SettingsProvider>
+        <FavoritesProvider>
+          <RootLayoutNav />
+        </FavoritesProvider>
+      </SettingsProvider>
     </AuthProvider>
   );
 }

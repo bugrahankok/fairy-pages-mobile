@@ -1,9 +1,10 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import Config from '../config/env';
+import { Book, GenerateBookRequest, BookStatusResponse, AuthResponse } from '../types';
 
-// Use your machine's IP address for iOS Simulator (localhost doesn't work)
-const API_BASE_URL = 'http://192.168.0.54:8080';
+const API_BASE_URL = Config.API_URL;
 
 // Retry configuration
 const MAX_RETRIES = 3;
@@ -191,16 +192,18 @@ export const authApi = {
 };
 
 export const bookApi = {
-    discover: () => api.get('/api/book/discover'),
-    history: () => api.get('/api/book/history'),
-    getById: (id: number) => api.get(`/api/book/${id}`),
-    generate: (data: any) => api.post('/api/book/generate', data),
+    discover: () => api.get<Book[]>('/api/book/discover'),
+    history: () => api.get<Book[]>('/api/book/history'),
+    getById: (id: number) => api.get<Book>(`/api/book/${id}`),
+    generate: (data: GenerateBookRequest) => api.post<Book>('/api/book/generate', data),
     downloadPdf: (id: number) => api.get(`/api/book/${id}/pdf`, { responseType: 'blob' }),
     getCover: (id: number) => `${API_BASE_URL}/api/book/${id}/cover`,
-    checkStatus: (id: number) => api.get(`/api/book/${id}/status`),
+    checkStatus: (id: number) => api.get<BookStatusResponse>(`/api/book/${id}/status`),
     updateVisibility: (id: number, isPublic: boolean) =>
-        api.patch(`/api/book/${id}/visibility`, { isPublic }),
+        api.patch<Book>(`/api/book/${id}/visibility`, { isPublic }),
     delete: (id: number) => api.delete(`/api/book/${id}`),
+    incrementView: (id: number) => api.post(`/api/book/${id}/view`),
+    incrementDownload: (id: number) => api.post(`/api/book/${id}/download`),
 };
 
 export const userApi = {

@@ -8,7 +8,8 @@ import {
   RefreshControl,
   ActivityIndicator,
   StyleSheet,
-  Dimensions
+  Dimensions,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,22 +17,10 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { bookApi } from '../../services/api';
 import { bookCache } from '../../services/bookCache';
+import { useFavorites } from '../../context/FavoritesContext';
 import BookCoverImage from '../../components/BookCoverImage';
 import { themeColors } from '../../constants/Colors';
-
-interface Book {
-  bookId: number;
-  name: string;
-  title: string; // Actual book title
-  theme: string;
-  tone: string;
-  content: string;
-  coverImagePath: string;
-  viewCount: number;
-  downloadCount: number;
-  authorName: string;
-  createdAt: string;
-}
+import { Book } from '../../types';
 
 const { width } = Dimensions.get('window');
 
@@ -44,6 +33,7 @@ const CATEGORIES = [
 
 export default function DiscoverScreen() {
   const router = useRouter();
+  const { isFavorite, toggleFavorite } = useFavorites();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [books, setBooks] = useState<Book[]>([]);
@@ -93,16 +83,27 @@ export default function DiscoverScreen() {
     loadBooks(true); // Force refresh from API
   };
 
+  // Filter books dynamically based on search query and category
+  const filteredBooks = books.filter(book => {
+    const matchesSearch = searchQuery.trim() === '' || 
+      (book.title && book.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (book.name && book.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (book.theme && book.theme.toLowerCase().includes(searchQuery.toLowerCase()));
 
+    const matchesCategory = selectedCategory === 'all' || 
+      (book.theme && book.theme.toLowerCase().includes(selectedCategory.toLowerCase()));
 
-  const featuredBook = books[0];
-  const trendingBooks = books.slice(1, 5);
-  const picksForYou = books.slice(5, 11);
+    return matchesSearch && matchesCategory;
+  });
+
+  const featuredBook = filteredBooks[0] || books[0];
+  const trendingBooks = filteredBooks.slice(1, 5).length > 0 ? filteredBooks.slice(1, 5) : books.slice(1, 5);
+  const picksForYou = filteredBooks.slice(5, 11).length > 0 ? filteredBooks.slice(5, 11) : books.slice(5, 11);
 
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#9333ea" />
+        <ActivityIndicator size="large" color="#a855f7" />
         <Text style={styles.loadingText}>Loading stories...</Text>
       </SafeAreaView>
     );
@@ -113,9 +114,11 @@ export default function DiscoverScreen() {
       <ScrollView
         style={styles.scrollView}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#9333ea" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#a855f7" />
         }
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
         <View style={styles.header}>
@@ -124,31 +127,40 @@ export default function DiscoverScreen() {
             <Text style={styles.headerSubtitle}>Explore magical stories</Text>
           </View>
           <View style={styles.headerIcons}>
-            <TouchableOpacity style={styles.iconButton}>
-              <Ionicons name="notifications-outline" size={24} color="#666" />
+            <TouchableOpacity 
+              style={styles.iconButton}
+              onPress={() => router.push('/(tabs)/profile')}
+            >
+              <Ionicons name="notifications-outline" size={24} color="#7A6B66" />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.iconButton, styles.profileIcon]}
               onPress={() => router.push('/(tabs)/profile')}
             >
-              <Ionicons name="person" size={22} color="#9333ea" />
+              <Ionicons name="person" size={22} color="#FF8E53" />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Search */}
         <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#999" />
+          <Ionicons name="search" size={20} color="#7A6B66" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search for an adventure..."
-            placeholderTextColor="#999"
+            placeholderTextColor="#7A6B66"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          <TouchableOpacity>
-            <Ionicons name="options-outline" size={20} color="#999" />
-          </TouchableOpacity>
+          {searchQuery ? (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color="#FF8E53" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => Alert.alert('Filter', 'Use search or select category below to filter.')}>
+              <Ionicons name="options-outline" size={20} color="#7A6B66" />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Categories */}
@@ -170,7 +182,7 @@ export default function DiscoverScreen() {
               <Ionicons
                 name={cat.icon as any}
                 size={16}
-                color={selectedCategory === cat.id ? '#fff' : '#666'}
+                color={selectedCategory === cat.id ? '#fff' : '#7A6B66'}
               />
               <Text style={[
                 styles.categoryText,
@@ -228,7 +240,7 @@ export default function DiscoverScreen() {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Trending</Text>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/library')}>
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             </View>
@@ -250,8 +262,15 @@ export default function DiscoverScreen() {
                     height={200}
                     showOverlay={true}
                   />
-                  <TouchableOpacity style={styles.heartButton}>
-                    <Ionicons name="heart-outline" size={16} color="#9333ea" />
+                  <TouchableOpacity 
+                    style={styles.heartButton}
+                    onPress={() => toggleFavorite(book.bookId)}
+                  >
+                    <Ionicons 
+                      name={isFavorite(book.bookId) ? "heart" : "heart-outline"} 
+                      size={16} 
+                      color="#FF8E53" 
+                    />
                   </TouchableOpacity>
                 </TouchableOpacity>
               ))}
@@ -290,7 +309,7 @@ export default function DiscoverScreen() {
         {/* Empty State */}
         {books.length === 0 && !error && !loading && (
           <View style={styles.emptyContainer}>
-            <Ionicons name="book-outline" size={64} color="#d1d5db" />
+            <Ionicons name="book-outline" size={64} color="#7A6B66" />
             <Text style={styles.emptyTitle}>No stories yet</Text>
             <Text style={styles.emptyText}>Be the first to create a magical story!</Text>
             <TouchableOpacity
@@ -311,21 +330,22 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f0a1a',
+    backgroundColor: '#FAF6EE',
   },
   scrollView: {
     flex: 1,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: '#0f0a1a',
+    backgroundColor: '#FAF6EE',
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
     marginTop: 12,
-    color: '#a1a1aa',
+    color: '#7A6B66',
     fontSize: 16,
+    fontWeight: '600',
   },
   header: {
     flexDirection: 'row',
@@ -338,11 +358,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#a855f7',
+    color: '#FF8E53',
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#7A6B66',
     marginTop: 2,
   },
   headerIcons: {
@@ -353,28 +373,32 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#1a1025',
+    backgroundColor: '#FFFDF9',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#EADFC9',
   },
   profileIcon: {
-    backgroundColor: '#241a35',
+    borderColor: '#FF8E53',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1025',
+    backgroundColor: '#FFFDF9',
     marginHorizontal: 20,
     borderRadius: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
     marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: '#EADFC9',
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
     marginLeft: 12,
-    color: '#f9fafb',
+    color: '#3A2E2B',
   },
   categoriesContainer: {
     marginBottom: 20,
@@ -389,17 +413,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
-    backgroundColor: '#1a1025',
+    backgroundColor: '#FFFDF9',
     marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#EADFC9',
   },
   categoryChipActive: {
-    backgroundColor: '#a855f7',
+    backgroundColor: '#8ECA94',
+    borderColor: '#8ECA94',
   },
   categoryText: {
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '500',
-    color: '#a1a1aa',
+    color: '#7A6B66',
   },
   categoryTextActive: {
     color: '#fff',
@@ -417,22 +444,24 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#f9fafb',
+    color: '#3A2E2B',
   },
   featuredBadge: {
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#9333ea',
+    color: '#FF8E53',
   },
   seeAllText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#9333ea',
+    color: '#FF8E53',
   },
   featuredCard: {
     marginHorizontal: 20,
     borderRadius: 20,
     overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: '#EADFC9',
   },
   featuredImage: {
     width: '100%',
@@ -445,12 +474,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 20,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(58, 46, 43, 0.45)',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
   },
   aiBadge: {
-    backgroundColor: '#9333ea',
+    backgroundColor: '#8ECA94',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -468,7 +497,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   featuredReaders: {
-    color: 'rgba(255,255,255,0.7)',
+    color: 'rgba(255,255,255,0.85)',
     fontSize: 14,
     marginTop: 4,
   },
@@ -478,6 +507,10 @@ const styles = StyleSheet.create({
   trendingCard: {
     marginRight: 16,
     position: 'relative',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#EADFC9',
   },
   trendingImage: {
     width: 140,
@@ -491,9 +524,14 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(26, 16, 37, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#3A2E2B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   picksSection: {
     paddingHorizontal: 20,
@@ -509,11 +547,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   pickImageContainer: {
-    backgroundColor: '#241a35',
+    backgroundColor: '#FFFDF9',
     borderRadius: 16,
     padding: 16,
     alignItems: 'center',
     marginBottom: 8,
+    borderWidth: 1.5,
+    borderColor: '#EADFC9',
   },
   pickImage: {
     width: 100,
@@ -523,11 +563,11 @@ const styles = StyleSheet.create({
   pickTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#f9fafb',
+    color: '#3A2E2B',
   },
   pickTheme: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#7A6B66',
     marginTop: 2,
   },
   errorContainer: {
@@ -539,18 +579,18 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#f9fafb',
+    color: '#3A2E2B',
     marginTop: 16,
   },
   errorSubtext: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#7A6B66',
     textAlign: 'center',
     marginTop: 8,
   },
   retryButton: {
     marginTop: 20,
-    backgroundColor: '#a855f7',
+    backgroundColor: '#FF8E53',
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 12,
@@ -568,17 +608,17 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#f9fafb',
+    color: '#3A2E2B',
     marginTop: 16,
   },
   emptyText: {
     fontSize: 14,
-    color: '#9ca3af',
+    color: '#7A6B66',
     marginTop: 8,
   },
   createButton: {
     marginTop: 20,
-    backgroundColor: '#a855f7',
+    backgroundColor: '#FF8E53',
     paddingHorizontal: 32,
     paddingVertical: 12,
     borderRadius: 12,

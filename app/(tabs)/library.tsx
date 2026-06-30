@@ -17,16 +17,7 @@ import { bookApi } from '../../services/api';
 import { bookCache } from '../../services/bookCache';
 import { useAuth } from '../../context/AuthContext';
 import BookCoverImage from '../../components/BookCoverImage';
-
-interface Book {
-    bookId: number;
-    name: string;
-    title: string; // Actual book title
-    theme: string;
-    coverImagePath: string;
-    createdAt: string;
-    isPublic: boolean;
-}
+import { Book } from '../../types';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +27,7 @@ export default function LibraryScreen() {
     const [books, setBooks] = useState<Book[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const hasLoadedOnce = useRef(false);
 
     useFocusEffect(
@@ -53,6 +45,7 @@ export default function LibraryScreen() {
     );
 
     const loadBooks = async (forceRefresh: boolean = false) => {
+        setError(null);
         try {
             // Try to load from cache first (unless forcing refresh)
             if (!forceRefresh) {
@@ -75,8 +68,10 @@ export default function LibraryScreen() {
 
             // Cache the books
             await bookCache.saveLibraryBooks(fetchedBooks);
-        } catch (error: any) {
-            console.error('❌ Failed to load library:', error.message);
+        } catch (err: any) {
+            const errorMessage = err.message || 'Failed to connect to server';
+            console.error('❌ Failed to load library:', errorMessage);
+            setError(errorMessage);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -87,8 +82,6 @@ export default function LibraryScreen() {
         setRefreshing(true);
         loadBooks(true); // Force refresh from API
     };
-
-
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -107,7 +100,7 @@ export default function LibraryScreen() {
     if (!isAuthenticated) {
         return (
             <SafeAreaView style={styles.centeredContainer}>
-                <Ionicons name="book-outline" size={64} color="#d1d5db" />
+                <Ionicons name="book-outline" size={64} color="#7A6B66" />
                 <Text style={styles.emptyTitle}>Your Library Awaits</Text>
                 <Text style={styles.emptyText}>Login to see your magical stories</Text>
                 <TouchableOpacity
@@ -123,7 +116,7 @@ export default function LibraryScreen() {
     if (loading) {
         return (
             <SafeAreaView style={styles.centeredContainer}>
-                <ActivityIndicator size="large" color="#a855f7" />
+                <ActivityIndicator size="large" color="#FF8E53" />
             </SafeAreaView>
         );
     }
@@ -133,7 +126,7 @@ export default function LibraryScreen() {
             <ScrollView
                 style={styles.scrollView}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#a855f7" />
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF8E53" />
                 }
                 showsVerticalScrollIndicator={false}
             >
@@ -143,39 +136,53 @@ export default function LibraryScreen() {
                     <Text style={styles.headerSubtitle}>Your magical creations</Text>
                 </View>
 
-                {/* Books */}
-                <View style={styles.booksContainer}>
-                    {/* Create New Card */}
-                    <TouchableOpacity
-                        onPress={() => router.push('/(tabs)/create')}
-                        style={styles.createCard}
-                    >
-                        <View style={styles.createIcon}>
-                            <Ionicons name="add" size={32} color="#fff" />
-                        </View>
-                        <Text style={styles.createText}>New Story</Text>
-                    </TouchableOpacity>
-
-                    {/* Book Cards */}
-                    {books.map((book) => (
-                        <TouchableOpacity
-                            key={book.bookId}
-                            onPress={() => router.push(`/book/${book.bookId}`)}
-                            style={styles.bookCard}
-                        >
-                            <BookCoverImage
-                                bookId={book.bookId}
-                                hasCover={!!book.coverImagePath}
-                                width={(width - 48) / 2}
-                                height={180}
-                            />
-                            <Text style={styles.bookTitle} numberOfLines={1}>{book.title || `${book.name}'s Adventure`}</Text>
-                            <Text style={styles.bookDate}>{formatDate(book.createdAt)}</Text>
+                {/* Error State */}
+                {error && (
+                    <View style={styles.errorContainer}>
+                        <Ionicons name="cloud-offline-outline" size={48} color="#ef4444" />
+                        <Text style={styles.errorText}>Connection Error</Text>
+                        <Text style={styles.errorSubtext}>{error}</Text>
+                        <TouchableOpacity style={styles.retryButton} onPress={() => loadBooks(true)}>
+                            <Text style={styles.retryText}>Retry</Text>
                         </TouchableOpacity>
-                    ))}
-                </View>
+                    </View>
+                )}
 
-                {books.length === 0 && (
+                {/* Books */}
+                {!error && (
+                    <View style={styles.booksContainer}>
+                        {/* Create New Card */}
+                        <TouchableOpacity
+                            onPress={() => router.push('/(tabs)/create')}
+                            style={styles.createCard}
+                        >
+                            <View style={styles.createIcon}>
+                                <Ionicons name="add" size={32} color="#fff" />
+                            </View>
+                            <Text style={styles.createText}>New Story</Text>
+                        </TouchableOpacity>
+
+                        {/* Book Cards */}
+                        {books.map((book) => (
+                            <TouchableOpacity
+                                key={book.bookId}
+                                onPress={() => router.push(`/book/${book.bookId}`)}
+                                style={styles.bookCard}
+                            >
+                                <BookCoverImage
+                                    bookId={book.bookId}
+                                    hasCover={!!book.coverImagePath}
+                                    width={(width - 48) / 2}
+                                    height={180}
+                                />
+                                <Text style={styles.bookTitle} numberOfLines={1}>{book.title || `${book.name}'s Adventure`}</Text>
+                                <Text style={styles.bookDate}>{formatDate(book.createdAt)}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                )}
+
+                {books.length === 0 && !error && (
                     <View style={styles.emptyState}>
                         <Ionicons name="book-outline" size={48} color="#d1d5db" />
                         <Text style={styles.emptyStateTitle}>No stories yet</Text>
@@ -192,14 +199,14 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#0f0a1a',
+        backgroundColor: '#FAF6EE',
     },
     scrollView: {
         flex: 1,
     },
     centeredContainer: {
         flex: 1,
-        backgroundColor: '#0f0a1a',
+        backgroundColor: '#FAF6EE',
         alignItems: 'center',
         justifyContent: 'center',
         paddingHorizontal: 40,
@@ -211,11 +218,11 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#f9fafb',
+        color: '#FF8E53',
     },
     headerSubtitle: {
         fontSize: 15,
-        color: '#9ca3af',
+        color: '#7A6B66',
         marginTop: 4,
     },
     booksContainer: {
@@ -226,32 +233,38 @@ const styles = StyleSheet.create({
     createCard: {
         width: (width - 48) / 2,
         height: 180,
-        backgroundColor: '#241a35',
+        backgroundColor: '#FFFDF9',
         borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
         margin: 8,
         borderWidth: 2,
         borderStyle: 'dashed',
-        borderColor: '#a855f7',
+        borderColor: '#FF8E53',
     },
     createIcon: {
         width: 56,
         height: 56,
         borderRadius: 28,
-        backgroundColor: '#a855f7',
+        backgroundColor: '#FF8E53',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 8,
     },
     createText: {
-        color: '#a855f7',
+        color: '#FF8E53',
         fontWeight: '600',
         fontSize: 14,
     },
     bookCard: {
         width: (width - 48) / 2,
         margin: 8,
+        borderRadius: 16,
+        overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: '#EADFC9',
+        backgroundColor: '#FFFDF9',
+        paddingBottom: 8,
     },
     bookImage: {
         width: '100%',
@@ -260,30 +273,32 @@ const styles = StyleSheet.create({
     },
     bookTitle: {
         fontWeight: '600',
-        color: '#f9fafb',
+        color: '#3A2E2B',
         marginTop: 8,
+        paddingHorizontal: 8,
         fontSize: 14,
     },
     bookDate: {
-        color: '#9ca3af',
+        color: '#7A6B66',
         fontSize: 12,
         marginTop: 2,
+        paddingHorizontal: 8,
     },
     emptyTitle: {
         fontSize: 20,
         fontWeight: 'bold',
-        color: '#f9fafb',
+        color: '#3A2E2B',
         marginTop: 16,
         textAlign: 'center',
     },
     emptyText: {
         fontSize: 15,
-        color: '#9ca3af',
+        color: '#7A6B66',
         marginTop: 8,
         textAlign: 'center',
     },
     loginButton: {
-        backgroundColor: '#a855f7',
+        backgroundColor: '#FF8E53',
         paddingHorizontal: 40,
         paddingVertical: 14,
         borderRadius: 14,
@@ -301,12 +316,42 @@ const styles = StyleSheet.create({
     emptyStateTitle: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#9ca3af',
+        color: '#3A2E2B',
         marginTop: 12,
     },
     emptyStateText: {
         fontSize: 14,
-        color: '#d1d5db',
+        color: '#7A6B66',
         marginTop: 4,
+    },
+    errorContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 40,
+        paddingHorizontal: 40,
+    },
+    errorText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#3A2E2B',
+        marginTop: 16,
+    },
+    errorSubtext: {
+        fontSize: 14,
+        color: '#7A6B66',
+        textAlign: 'center',
+        marginTop: 8,
+    },
+    retryButton: {
+        marginTop: 20,
+        backgroundColor: '#FF8E53',
+        paddingHorizontal: 32,
+        paddingVertical: 12,
+        borderRadius: 12,
+    },
+    retryText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 16,
     },
 });
